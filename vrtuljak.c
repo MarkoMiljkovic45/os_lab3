@@ -8,11 +8,11 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <semaphore.h>
-#define N 3
-#define PASSANGER_COUNT 6
 #define SEM_COUNT 4
 #define CAROUSEL_DURATION 3
 
+int carousel_limit;
+int passanger_count;
 int ID;
 sem_t *sem;
 // 0 - CAROUSEL
@@ -47,26 +47,32 @@ void posjetitelj(int id) {
 }
 
 void vrtuljak(void) {
-    int ride_count = ceil((double) PASSANGER_COUNT / N);
+    int ride_count = ceil((double) passanger_count / carousel_limit);
+    ride_count = ride_count == 0 ? 1 : ride_count;
     for (int i = 0; i < ride_count; i++) {
-        for (int i = 0; i < N; i++) //Let passengers board the carousel
+        for (int i = 0; i < carousel_limit; i++) //Let passengers board the carousel
             sem_post(&sem[0]);
 
-        for (int i = 0; i < N; i++) //Wait for the passangers to board
+        for (int i = 0; i < carousel_limit; i++) //Wait for the passangers to board
             sem_wait(&sem[1]);
 
         pokreni_vrtuljak();
         zaustavi_vrtuljak();
 
-        for (int i = 0; i < N; i++) //Let passengers know that the ride is over
+        for (int i = 0; i < carousel_limit; i++) //Let passengers know that the ride is over
             sem_post(&sem[2]);
 
-        for (int i = 0; i < N; i++) //Wait for the passangers to leave
+        for (int i = 0; i < carousel_limit; i++) //Wait for the passangers to leave
             sem_wait(&sem[3]);
     }
 }
 
 int main(void) {
+
+    printf("Unesite broj mjesta na vrtuljku: ");
+    scanf("%d", &carousel_limit);
+    printf("Unesite broj posjetitelja: ");
+    scanf("%d", &passanger_count);
 
     ID = shmget(IPC_PRIVATE, SEM_COUNT * sizeof(sem_t), 0600);
     sem = shmat(ID, NULL, 0);
@@ -82,7 +88,7 @@ int main(void) {
     }
 
     //Posjetitelji init
-    for (int i = 1; i <= PASSANGER_COUNT; i++) {
+    for (int i = 1; i <= passanger_count; i++) {
         if (fork() == 0) {
             posjetitelj(i);
             exit(0);
@@ -90,7 +96,7 @@ int main(void) {
     }
 
     //Wait for processes to end
-    for(int i = 0; i <= PASSANGER_COUNT; i++)
+    for(int i = 0; i <= passanger_count; i++)
         wait(NULL);
 
     sem_destroy(sem);
