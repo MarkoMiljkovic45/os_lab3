@@ -8,12 +8,11 @@
 
 int linux_programer_count;
 int ms_programer_count;
+int starvation_limit; //This limit is used to fix the starvation problem
 
 int programer_count[PROGRAMER_TYPE_COUNT];
 int resturant_queue[PROGRAMER_TYPE_COUNT];
 int entered_count[PROGRAMER_TYPE_COUNT];
-
-int starvation_limit; //This limit is used to fix the starvation problem
 
 pthread_mutex_t monitor;
 pthread_cond_t cond_queue[PROGRAMER_TYPE_COUNT];
@@ -80,9 +79,9 @@ int main(void) {
     scanf("%d", &linux_programer_count);
     printf("Unesite broj microsoft programera: ");
     scanf("%d", &ms_programer_count);
-
-    starvation_limit = linux_programer_count < ms_programer_count ? linux_programer_count : ms_programer_count;
-
+    printf("Unesite granicu izgladnjivanja: ");
+    scanf("%d", &starvation_limit);
+    
     pthread_t linux_thread_ids[linux_programer_count];
     pthread_t ms_thread_ids[ms_programer_count];
 
