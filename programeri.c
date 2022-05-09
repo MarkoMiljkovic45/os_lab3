@@ -10,6 +10,9 @@ int linux_programer_count;
 int ms_programer_count;
 int starvation_limit; //This limit is used to fix the starvation problem
 
+int linux_programer_type = 0;
+int ms_programer_type = 1;
+
 int programer_count[PROGRAMER_TYPE_COUNT];
 int resturant_queue[PROGRAMER_TYPE_COUNT];
 int entered_count[PROGRAMER_TYPE_COUNT];
@@ -24,7 +27,7 @@ void udji(int vrsta) {
     while (programer_count[1 - vrsta] > 0 ||                //Wait until there are no more programers of the opposite type in the resutrant OR
            entered_count[vrsta] == starvation_limit) {      //the number of programers of my type that entered is equal to the starvation limit
               
-        if (vrsta == 0)
+        if (vrsta == linux_programer_type)
             printf("Linux programer queue = %d\n", resturant_queue[vrsta]);
         else
             printf("Microsoft programer queue = %d\n", resturant_queue[vrsta]);
@@ -32,7 +35,7 @@ void udji(int vrsta) {
         pthread_cond_wait(&cond_queue[vrsta], &monitor);
     }
 
-    if (vrsta == 0)
+    if (vrsta == linux_programer_type)
         printf("Linux programer entered the resturant\n");
     else
         printf("Microsoft programer entered the resturant\n");
@@ -54,7 +57,7 @@ void izadji(int vrsta) {
     pthread_mutex_lock(&monitor);
     programer_count[vrsta]--;                               //Decrement the number of programers in the resturan of a certain type
 
-    if (vrsta == 0)
+    if (vrsta == linux_programer_type)
         printf("Linux programer left the resturant\n");
     else
         printf("Microsoft programer left the resturant\n");
@@ -72,8 +75,24 @@ void *programer(void *vrsta) {
     izadji(*((int *) vrsta));
 }
 
+void create_thread(pthread_t *thread_id, int vrsta) {
+    if (vrsta == linux_programer_type) {
+        if (pthread_create(thread_id, NULL, programer, &linux_programer_type) != 0) {
+            printf("Failed to create thread!\n");
+            exit(1);
+        }
+    } else {
+        if (pthread_create(thread_id, NULL, programer, &ms_programer_type) != 0) {
+            printf("Failed to create thread!\n");
+            exit(1);
+        }
+    }
+}
+
 
 int main(void) {
+
+    srand(time(NULL));
 
     printf("Unesite broj linux programera: ");
     scanf("%d", &linux_programer_count);
@@ -81,12 +100,9 @@ int main(void) {
     scanf("%d", &ms_programer_count);
     printf("Unesite granicu izgladnjivanja: ");
     scanf("%d", &starvation_limit);
-    
+
     pthread_t linux_thread_ids[linux_programer_count];
     pthread_t ms_thread_ids[ms_programer_count];
-
-    int linux_index = 0;
-    int ms_index = 1;
     
     //Monitor init
     pthread_mutex_init(&monitor, NULL);
@@ -97,18 +113,19 @@ int main(void) {
     }
 
     //Programer threads init
-    for (int i = 0; i < linux_programer_count; i++) {
-        if (pthread_create(&linux_thread_ids[i], NULL, programer, &linux_index) != 0) {
-            printf("Failed to create thread!\n");
-            exit(1);
+    int linux_idx = 0;
+    int ms_idx = 0;
+    for (int i = 0; i < linux_programer_count + ms_programer_count; i++) {
+        int random = rand();
+        if (random % 2 == 0 && linux_idx < linux_programer_count) {
+            create_thread(&linux_thread_ids[linux_idx++], linux_programer_type);
+            continue;
         }
-    }
-
-    for (int i = 0; i < ms_programer_count; i++) {
-        if (pthread_create(&ms_thread_ids[i], NULL, programer, &ms_index) != 0) {
-            printf("Failed to create thread!\n");
-            exit(1);
+        if (ms_idx < ms_programer_count) {
+            create_thread(&ms_thread_ids[ms_idx++], ms_programer_type);
+            continue;
         }
+        create_thread(&linux_thread_ids[linux_idx++], linux_programer_type);
     }
 
     //Wait for threads to finish
